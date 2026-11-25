@@ -75,7 +75,7 @@ Each script draws its figure. To write PNG and PDF files, set `op.exportFig = tr
 
 If you use these data, please cite the article above and this dataset:
 
-> Baek, S., Park, Y.S., Hur, J., Jeong, H. (2026). *Field data and figure scripts for "Nearshore surface currents from a drone-mounted uncooled thermal camera using adaptive thermal image velocimetry (AThIVe)."* Zenodo. DOI: to be added.
+> Baek, S., Park, Y.S., Hur, J., Jeong, H. (2026). *Field data and figure scripts for "Nearshore surface currents from a drone-mounted uncooled thermal camera using adaptive thermal image velocimetry (AThIVe)."* Zenodo. DOI: https://doi.org/10.5281/zenodo.24537293
 
 ## License
 
