@@ -2,7 +2,7 @@
 % Figure 13: observed surface excess dU_obs at the APF relative to the KMA 10-m wind.
 %   (a) dU_obs of each record on a compass (north up, directions toward which dU_obs points), with the downwind
 %       direction of the KMA 10-m wind (dashed), the APF mean wave direction (red tick) and the fixed axes +x, +y
-%       (dotted). Shading: speeds of 1-3.5% of U10 within 15 deg of downwind (orange 14 July, blue 15 July).
+%       (dotted). Shading: speeds of 2.45-3.70% of U10 within 29 deg of downwind (orange 14 July, blue 15 July).
 %   (b) dU_obs of all records relative to the KMA downwind direction (top); arcs and radial bars are the 95%
 %       intervals of direction and magnitude; shading as in (a), one band per day.
 %
@@ -45,8 +45,8 @@ op.blkT  = 20;    op.nbootT = 2000;         % AThIVe circular block bootstrap: b
 op.band  = [0.07 0.35];                     % APF phase band (Hz)
 op.nb    = 12;    op.nmin = 3;              % phase bins, minimum samples per bin
 op.nbootA = 1000;                           % APF wave-cycle bootstrap resamples
-op.frac   = [0.01 0.035];                   % drift band: fractions of U10
-op.sector = 15;                             % drift band: half-angle about downwind (deg)
+op.frac   = [0.0245 0.0370];                % drift band: fractions of U10 (1-cm current and skin drift, Liu et al., 2026)
+op.sector = 29;                             % drift band: half-angle about downwind (deg), one standard deviation
 op.rmaxA = 0.40; op.rtickA = [0.2 0.4];     % (a) radius (m/s)
 op.rmaxB = 0.40; op.rtickB = [0.1 0.2 0.3 0.4];   % (b) radius (m/s)
 op.cNB = [0.09 0.63 0.52];  op.cBR = [0.45 0.45 0.45];  op.cWind = [0 0 0];  op.cWave = [0.70 0.12 0.12];
