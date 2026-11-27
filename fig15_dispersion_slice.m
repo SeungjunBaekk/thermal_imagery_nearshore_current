@@ -17,7 +17,7 @@
 %   h               water depth [m]
 %   wave_direction  wave propagation direction, angle from +x toward +y [deg]
 %   U_apf, V_apf    APF depth-mean current [m s^-1]
-%   U_athive, V_athive          AThIVe surface mean current [m s^-1]
+%   U_athive, V_athive          AThIVe surface current, time mean over the analysis interval [m s^-1]
 %   U_wind_drift, V_wind_drift  wind drift 0.03 U10 along the KMA wind [m s^-1]
 %   breaking        1 = breaking record (no wind-drift curve), 0 = non-breaking
 % Frame: x shoreward (119 deg), y alongshore (29 deg from grid north), origin at the APF.
@@ -51,8 +51,12 @@ op.cmap      = parula(256);
 op.cUsed     = [0.90 0.10 0.10];                          % ridge points used in the inversion
 op.cDrift    = [1.00 0.55 0.00];                          % AThIVe minus wind drift
 op.dirLab    = {'propagation', 'direction'};
-op.legLabs   = {'linear dispersion, U = 0', 'APF depth mean', 'AThIVe surface mean', ...
-                'AThIVe minus wind drift', 'ridge, crest sector (used)', 'ridge, other directions'};
+Um   = char(362);                                         % U with macron (mean current)
+sAPF = ['\bf' Um '\rm_{APF}'];  sAT = ['\bf' Um '\rm_{AThIVe}'];
+op.legLabs   = {'linear dispersion, U = 0', ['APF depth mean, ' sAPF], ['AThIVe surface mean, ' sAT], ...
+                [sAT ' ' char(8722) ' 0.03\itU\rm_{10}'], 'ridge, crest sector (used)', 'ridge, other directions'};
+op.annLabs   = {sAPF, sAT, [Um '_{AThIVe} ' char(8722) ' 0.03{\itU}_{10}']};   % names of the values printed in the sections
+op.legX      = [0.00 0.34 0.70];                          % left edge of the legend columns (fraction of the legend width)
 op.font      = 'Arial';  op.fs = 7;  op.fsLab = 8;
 op.figCm     = [14.0 13.9];
 op.lay       = struct('L0', 1.3, 'wP', 3.2, 'gapC', 1.25, 'hR', 3.2, 'gapR', 0.5, 'top', 0.45, 'yCb', 1.6, 'legH', 0.85);  % [cm]
@@ -181,10 +185,10 @@ for i = 1:nR
         if s == 4, cLn = op.cDrift; else, cLn = 'w'; end
         plot(ax, D(i).kk, R(i).fc(s, :), lineSty{s}, 'Color', cLn, 'LineWidth', 0.8 + 0.3*(s == 4));
     end
-    cTxt = {sprintf('APF %+.2f m s^{-1}', R(i).Ue(2)), sprintf('AThIVe %+.2f m s^{-1}', R(i).Ue(3))};
+    cTxt = {[op.annLabs{1} sprintf(' %+.2f m s^{-1}', R(i).Ue(2))], [op.annLabs{2} sprintf(' %+.2f m s^{-1}', R(i).Ue(3))]};
     yTxt = 0.03;
     if isfinite(R(i).Ue(4))
-        text(ax, 0.98, 0.03, sprintf(['AThIVe ' char(8722) ' drift %+.2f m s^{-1}'], R(i).Ue(4)), 'Units', 'normalized', ...
+        text(ax, 0.98, 0.03, [op.annLabs{3} sprintf(' %+.2f m s^{-1}', R(i).Ue(4))], 'Units', 'normalized', ...
             'Color', op.cDrift, 'FontSize', op.fs - 0.5, 'FontWeight', 'bold', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
         yTxt = 0.13;
     end
@@ -212,7 +216,7 @@ set(AXs(end), 'Units', 'centimeters', 'Position', [L0 + wP + gapC, yRow(end), wS
 axL = axes(fig, 'Units', 'centimeters', 'Position', [L0, 0.0, op.figCm(1) - L0 - 0.3, op.lay.legH], 'Visible', 'off');
 hold(axL, 'on');  axL.Toolbar.Visible = 'off';
 set(axL, 'XLim', [0 1], 'YLim', [0 1]);
-legX = [0.00 0.37 0.70];  legY = [0.70 0.25];  segW = 0.06;
+legX = op.legX;  legY = [0.70 0.25];  segW = 0.06;
 LE = struct('sty', {'-', '--', ':', '-.', 'o', 'o'}, 'col', {1, 1, 2, 2, 3, 3}, 'row', {1, 2, 1, 2, 1, 2}, ...
     'face', {[], [], [], [], op.cUsed, [0.6 0.6 0.6]}, 'lab', op.legLabs);
 for q = 1:numel(LE)

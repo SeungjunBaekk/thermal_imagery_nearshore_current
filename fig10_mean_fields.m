@@ -41,8 +41,9 @@ op.gapIn     = 0.10;                      % gap between panels [in]
 op.font      = 'Arial';
 op.fs        = struct('head', 8.5, 'label', 8, 'tick', 7.5, 'legend', 7.5);
 op.lw        = struct('arrow', 0.6, 'frame', 0.6, 'grid', 0.7, 'ms', 5);
+op.Um        = char(362);                 % U with macron (overbar symbol of the time mean)
 op.legLabels = {'APF', 'ACM, inside the grid', 'ACM, outside the grid', 'Thermal footprint', ...
-                'Analysis grid', 'Time-mean AThIVe velocity'};
+                'Analysis grid', ['AThIVe time mean, \bf' op.Um '\rm_{AThIVe}']};
 op.dpi       = 300;
 nR = numel(op.records);
 

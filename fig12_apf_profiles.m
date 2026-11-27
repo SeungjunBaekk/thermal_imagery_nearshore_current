@@ -3,7 +3,7 @@
 %   (a) U (shoreward positive, toward 119 deg) and (b) V (toward 29 deg) against height above the bed.
 %   Black circles: phase-balanced profiler means with 95 % intervals; black dashed line: their depth mean.
 %   Blue line and shading: SWASH fixed-height time mean below the trough level (mean of 5 alongshore points,
-%   +-2 standard deviations); blue dashed line: SWASH depth mean; blue diamond: SWASH top-layer time mean
+%   +-2 standard deviations); blue dashed line: SWASH whole-depth mean; blue diamond: SWASH top-layer time mean
 %   (+-2 standard deviations of the 5 points) at the model mean water level. Square and triangle: AThIVe and
 %   RGB PIV surface means at the observed mean water level. Gray band: layer affected by side-lobe interference;
 %   black solid and blue dotted horizontal lines: observed and modeled mean water levels.
@@ -53,9 +53,11 @@ op.tagMargin = 0.045;                        % width of the row-label margin (fi
 op.xlabU = '\itU\rm (m s^{-1})';  op.xlabV = '\itV\rm (m s^{-1})';
 op.xtickU = -0.2:0.2:0.2;  op.xtickV = 0:0.2:0.6;
 op.xlimU = [-0.27 0.20];  op.xlimV = [-0.05 0.65];
-op.legTop = {'APF, phase-balanced mean, 95% interval', 'APF, depth mean', ...
-             'SWASH, time mean (5 alongshore points)', 'SWASH, depth mean', ...
-             'SWASH, top-layer time mean', 'AThIVe, surface time mean', 'RGB PIV, surface time mean'};
+op.Um = char(362);                           % U with macron (overbar symbol of the mean current)
+op.legTop = {'APF, phase-balanced mean, 95% interval', ['APF, depth mean, \bf' op.Um '\rm_{APF}'], ...
+             'SWASH, time mean (5 alongshore points)', 'SWASH, whole-depth mean', ...
+             ['SWASH, top-layer time mean, \bf' op.Um '\rm_{top}'], ...
+             ['AThIVe, surface time mean, \bf' op.Um '\rm_{AThIVe}'], 'RGB PIV, surface time mean'};
 op.legCols = 2;
 op.ylabPad = 2;                              % extra y-label offset (pt)
 op.cEQ = [0 0 0];  op.cM = [0.10 0.35 0.75];  op.cT = [0.09 0.63 0.52];  op.cP = [0.58 0.20 0.70];

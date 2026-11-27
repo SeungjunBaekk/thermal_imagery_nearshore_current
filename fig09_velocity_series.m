@@ -1,8 +1,8 @@
 % fig09_velocity_series.m
 % Figure 9: cross-shore velocity U at the APF (shoreward positive) in the five records: AThIVe surface velocity
 % at the APF (5 Hz) and the APF depth mean (1 Hz), over the first 94 s of each analysis interval.
-% AThIVe is shifted by the lag of maximum correlation of the band-passed series; the panel values are means
-% over the analysis interval.
+% AThIVe is shifted by the lag of maximum correlation of the band-passed series; each panel header gives that
+% correlation and lag, computed over the analysis interval.
 %
 % Data file: data/fig09_velocity_series.nc, one group per record (/D1V1, /D1V2, /D2V1, /D2V2, /D2V3):
 %   t_athive          (athive_time)  s      time since clip start, drone clock
@@ -14,7 +14,7 @@
 %
 % Computation:
 %   - APF times are moved to the drone clock: t = t_apf + clock_offset.
-%   - Means: time means of AThIVe and APF U inside the analysis interval.
+%   - Means: time means of AThIVe and APF U inside the analysis interval (removed before the band-pass; printed only).
 %   - Correlation: both series are interpolated to a 5-Hz grid over the analysis interval, gaps filled linearly,
 %     the mean removed and band-passed (0.07-0.35 Hz, 3rd-order Butterworth, zero phase). AThIVe is shifted by
 %     lags of -5 to +5 s (0.2-s steps) and correlated with the APF series on grid points within 1 s of a valid
@@ -118,7 +118,7 @@ for ic = 1:nC
     yH = 1 + 0.03/ph;                                                   % header line just above the axes
     text(a_, 0, yH, op.titles{ic}, 'Units', 'normalized', 'FontSize', f.name, 'FontWeight', 'bold', ...
         'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'left', 'Margin', 1);
-    txt = sprintf('mean %+.2f | %+.2f m s^{-1}    r = %.2f (lag %+.1f s)', s_.meanT, s_.meanA, s_.rmax, s_.lag);
+    txt = sprintf('r = %.2f (lag %+.1f s)', s_.rmax, s_.lag);
     text(a_, 1.0, yH, txt, 'Units', 'normalized', 'FontSize', f.stat, 'HorizontalAlignment', 'right', ...
         'VerticalAlignment', 'bottom', 'Margin', 1);
     if ic == 1

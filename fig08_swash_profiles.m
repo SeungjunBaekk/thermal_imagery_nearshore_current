@@ -64,7 +64,7 @@ op.rowTags   = {'(a)', '(b)', '(c)', '(d)', '(e)'};
 op.mszAPF    = 11;  op.mszACM = 8;
 op.boxIn     = [1.75 1.25];              % panel size (in)
 op.font      = 'Arial';
-op.fs        = struct('tag', 17, 'head', 15, 'label', 14, 'tick', 13, 'legend', 13);
+op.fs        = struct('tag', 24, 'head', 21, 'label', 20, 'tick', 18, 'legend', 18);
 op.dpi       = 300;
 
 %% 1 read data
@@ -237,7 +237,7 @@ for r = 1:nr
             ax.YTickLabel = [];
         end
         if r == nr
-            xlabel(ax, '\itx\rm (m, shoreward +)', 'FontSize', f.label);
+            xlabel(ax, '\itx\rm (m)', 'FontSize', f.label);
         else
             ax.XTickLabel = [];
         end

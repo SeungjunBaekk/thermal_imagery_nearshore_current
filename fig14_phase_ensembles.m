@@ -51,9 +51,9 @@ op.lw = struct('T', 1.6, 'A', 1.4, 'S', 1.6, 'W', 2.0, 'spec', 1.2);
 op.ciAlpha = struct('T', 0.22, 'A', 0.13);
 op.legend = {'AThIVe, surface', ['AThIVe ' char(8722) ' 0.03\itU\rm_{10} (KMA)'], 'APF, depth mean', 'SWASH, top layer'};
 op.rowTags = {'(a)', '(b)', '(c)', '(d)'};
-op.boxIn   = [1.85 1.40];     % panel box (in)
+op.boxIn   = [1.85 1.62];     % panel box (in)
 op.font    = 'Arial';
-op.fs      = struct('panel', 14, 'label', 14, 'tick', 14, 'legend', 12, 'head', 14, 'small', 11);
+op.fs      = struct('panel', 19, 'label', 19, 'tick', 19, 'legend', 16, 'head', 19, 'small', 15);
 op.dpi     = 300;
 
 %% 1 read data
@@ -223,12 +223,12 @@ for i = 1:nc
         set(ax, 'XLim', [-180 180], 'XTick', -180:90:180, 'YLim', yl_, 'YTick', yt_);
         if p == 1
             set(ax, 'XTickLabel', []);
-            text(ax, 0.97, 0.96, ['\Delta\phi ' sprintf('%+.0f°', R(i).shift)], ...
+            text(ax, 0.97, 0.96, ['\Delta\phi ' sprintf('%+.0f', R(i).shift) char(176)], ...
                  'Units', 'normalized', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', ...
                  'FontSize', f.small, 'Color', [0.3 0.3 0.3]);
         else
             set(ax, 'XTickLabel', {'', '-90', '0', '90', ''}, 'XTickLabelRotation', 0);
-            xlabel(ax, 'wave phase (°)', 'FontSize', f.label);
+            xlabel(ax, ['wave phase (' char(176) ')'], 'FontSize', f.label);
         end
     end
     for p = 3:4                                            % spectrum rows

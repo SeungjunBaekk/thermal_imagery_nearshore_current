@@ -83,7 +83,7 @@ op.cbGapIn = 0.10;  op.cbWIn = 0.15;                   % colorbar gap and width 
 op.tokenSize = [18 10];
 % fonts
 op.font = 'Arial';
-op.fs = struct('panel', 16, 'label', 14, 'tick', 14, 'legend', 11, 'legendB', 12, 'small', 10, 'cb', 14, 'xc', 14);
+op.fs = struct('panel', 21, 'label', 18, 'tick', 18, 'legend', 14, 'legendB', 16, 'small', 13, 'cb', 18, 'xc', 18);
 op.panelLabel = {'(a)', '(b)', '(c)', '(d)'};
 op.panelPos = [-0.1 1.1];                              % panel label position (axes fraction)
 

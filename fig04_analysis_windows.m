@@ -1,11 +1,11 @@
 % fig04_analysis_windows.m
-% Figure 4: tide and drone altitude of the five video records.
+% Figure 4: tide and camera height of the five video records.
 %   (a) Water level: tide predicted from the Anheung tide-gauge harmonic constants and transferred to the site
 %       (line), 10-min mean water level from the APF pressure (dots), mean water level of each record at its
 %       start (circles), high water (HW) and low water (LW) of the predicted tide (triangles), and the drone
 %       flights for the SfM topography (green) and the Depth from Waves (DfW) bathymetry (orange).
-%   (b)-(f) Drone altitude (ellipsoidal height recorded by the drone) against time from the start of each
-%       video; the bar is the analysis interval.
+%   (b)-(f) Camera height above the water surface, H_cam, against time from the start of each video; the bar
+%       is the analysis interval.
 %
 % Data file: data/fig04_analysis_windows.nc
 %   root   tide_time         [h since 2026-07-14 00:00 KST]  time of the predicted tide (5-min step)
@@ -17,7 +17,7 @@
 %          dfw_flight_time   [h since 2026-07-14 00:00 KST]  start/end of the DfW video (bounds x flight)
 %   /D1V1, /D1V2, /D2V1, /D2V2, /D2V3
 %          elapsed_time      [s]   time from the start of the video
-%          drone_altitude    [m]   ellipsoidal height recorded by the drone
+%          camera_height     [m]   camera height above the water surface, H_cam
 %          analysis_interval [s]   start and end of the analysis interval
 %          video_start_time  [h since 2026-07-14 00:00 KST]
 %          mean_water_level  [m, MSL]  mean water level of the record (10-min APF window)
@@ -57,7 +57,7 @@ op.dfwColor = '#f39c12';  op.dfwAlpha = 0.45;
 op.xlimF = [-100 520];                                 % time axis [s]
 op.barY  = 0.08;                                       % bar centre height (axes fraction)
 op.barH  = 0.08;                                       % bar thickness (axes fraction)
-op.fYlabel = 'drone altitude [m]';
+op.fYlabel = '{\itH}_{cam} [m]';
 op.fYlabelPanel = 3;                                   % flight panel that carries the y label
 op.fXlabel = 'time [s]';
 op.barLegend = 'analysis interval';
@@ -89,7 +89,7 @@ FL = struct('name', op.recName, 'col', op.recCol);
 for i = 1:nF
     g = ['/' FL(i).name '/'];
     FL(i).tAlt = rd([g 'elapsed_time']);
-    FL(i).alt  = rd([g 'drone_altitude']);
+    FL(i).Hcam = rd([g 'camera_height']);
     FL(i).tAna = rd([g 'analysis_interval']).';
     FL(i).t0H  = rd([g 'video_start_time']);
     FL(i).mwl  = rd([g 'mean_water_level']);
@@ -104,13 +104,15 @@ TD.off = mean(TD.lvl - interp1(TD.tH, TD.eta0, TD.qH), 'omitnan');
 TD.eta = TD.eta0 + TD.off;
 for i = 1:nF
     FL(i).dur  = max(FL(i).tAlt);                          % video duration
+    inA = FL(i).tAlt >= FL(i).tAna(1) & FL(i).tAlt <= FL(i).tAna(2);
+    FL(i).HcamMean = mean(FL(i).Hcam(inA), 'omitnan');     % mean camera height over the analysis interval
     FL(i).when = char(string(op.tRef + hours(FL(i).t0H), 'dd MMM HH:mm', 'en_US'));
 end
 fprintf('tide shifted by %+.4f m\n', TD.off);
-fprintf('%-5s %-13s %9s %7s %7s %7s\n', 'name', 'start', 'interval', 'dur', 'alt', 'mwl');
+fprintf('%-5s %-13s %9s %7s %7s %7s\n', 'name', 'start', 'interval', 'dur', 'H_cam', 'mwl');
 for i = 1:nF
     fprintf('%-5s %-13s %4g-%-4g %7.1f %7.2f %7.3f\n', FL(i).name, FL(i).when, FL(i).tAna, FL(i).dur, ...
-            mean(FL(i).alt(FL(i).tAlt >= FL(i).tAna(1) & FL(i).tAlt <= FL(i).tAna(2))), FL(i).mwl);
+            FL(i).HcamMean, FL(i).mwl);
 end
 
 %% 3 panel positions
@@ -204,16 +206,16 @@ for i = 1:nF
     text(axK, 0.26, yk(i), FL(i).name, 'FontSize', op.fs.key, 'VerticalAlignment', 'middle');
 end
 
-%% 5 figure: (b)-(f) drone altitude and analysis interval
+%% 5 figure: (b)-(f) camera height and analysis interval
 axF = gobjects(1, nF);
 for i = 1:nF
     ax = axes(fig, 'Position', POS.flight(i, :), 'FontSize', op.fs.tick, 'TickDir', 'out', 'Layer', 'top', 'Box', 'off');
     hold(ax, 'on');  axF(i) = ax;
-    lo  = min(FL(i).alt);  hi = max(FL(i).alt);  pad = max(1, 0.15*(hi - lo));
-    ylF = [lo - 2*pad, hi + pad];  sp = diff(ylF);         % room for the bar below the altitude line
+    lo  = min(FL(i).Hcam);  hi = max(FL(i).Hcam);  pad = max(1, 0.15*(hi - lo));
+    ylF = [lo - 2*pad, hi + pad];  sp = diff(ylF);         % room for the bar below the height line
     yc = ylF(1) + op.barY*sp;  hb = op.barH/2*sp;
     patch(ax, FL(i).tAna([1 2 2 1]), yc + hb*[-1 -1 1 1], hx(op.cTIV), 'EdgeColor', 'none');
-    plot(ax, FL(i).tAlt, FL(i).alt, '-', 'Color', op.cAlt, 'LineWidth', 1.1);
+    plot(ax, FL(i).tAlt, FL(i).Hcam, '-', 'Color', op.cAlt, 'LineWidth', 1.1);
     plot(ax, [0 0], ylF, '-', [1 1]*FL(i).dur, ylF, '-', 'Color', op.cEdge, 'LineWidth', 0.6);   % video start and end
     set(ax, 'XLim', op.xlimF, 'YLim', ylF, 'XGrid', 'on', 'YGrid', 'on', 'GridAlpha', op.gridAlpha);
     if i < nF, ax.XTickLabel = {}; end

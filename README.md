@@ -10,7 +10,7 @@ The data were collected at Mallipo Beach, on the west coast of the Taean Peninsu
 
 | Figure | Script | Data file | Content |
 |---|---|---|---|
-| 4 | `fig04_analysis_windows.m` | `data/fig04_analysis_windows.nc` | Tide and drone altitude of the five video records |
+| 4 | `fig04_analysis_windows.m` | `data/fig04_analysis_windows.nc` | Tide and camera height above the water of the five video records |
 | 6 | `fig06_model_setup.m` | `data/fig06_model_setup.nc` | Model bathymetry (SWAN grids, SWASH bed) and forcing (buoy waves, KMA wind) |
 | 7 | `fig07_swash_maps.m` | `data/fig07_swash_maps.nc` | SWASH time-mean velocity and wave energy dissipation rate |
 | 8 | `fig08_swash_profiles.m` | `data/fig08_swash_profiles.nc` | Cross-shore SWASH profiles with observations at the APF and the ACM |
@@ -18,7 +18,7 @@ The data were collected at Mallipo Beach, on the west coast of the Taean Peninsu
 | 10 | `fig10_mean_fields.m` | `data/fig10_mean_fields.nc` | Time-mean AThIVe surface velocity fields |
 | 11 | `fig11_mean_currents.m` | `data/fig11_mean_currents.nc` | Mean current at the APF from AThIVe, SWASH, the profiler, and RGB PIV |
 | 12 | `fig12_apf_profiles.m` | `data/fig12_apf_profiles.nc` | Vertical structure of the mean current at the APF |
-| 13 | `fig13_wind_excess.m` | `data/fig13_wind_excess.nc` | Surface-current excess relative to the KMA 10-m wind |
+| 13 | `fig13_wind_excess.m` | `data/fig13_wind_excess.nc` | Observed surface excess (AThIVe mean minus profiler depth mean) relative to the KMA 10-m wind |
 | 14 | `fig14_phase_ensembles.m` | `data/fig14_phase_ensembles.nc` | Wave-phase ensembles and velocity spectra at the APF |
 | 15 | `fig15_dispersion_slice.m` | `data/fig15_dispersion_slice.nc` | Wavenumber–frequency spectra of the visible video around the APF |
 
@@ -33,18 +33,18 @@ Not included in this repository:
 
 | Record | Start (KST) | Analysis interval (s from video start) | Wave breaking |
 |---|---|---|---|
-| D1V1 | 14 Jul 2026 13:24 | 85–345 | at APF |
-| D1V2 | 14 Jul 2026 13:45 | 89–183 | at APF |
-| D2V1 | 15 Jul 2026 07:11 | 15–150 | none |
-| D2V2 | 15 Jul 2026 07:33 | 15–400 | none |
-| D2V3 | 15 Jul 2026 07:48 | 15–380 | seaward of APF |
+| D1V1 | 14 Jul 2026 13:24 | 85–345 | near the APF |
+| D1V2 | 14 Jul 2026 13:45 | 89–183 | near the APF |
+| D2V1 | 15 Jul 2026 07:11 | 15–150 | shoreward of the APF |
+| D2V2 | 15 Jul 2026 07:33 | 15–400 | shoreward of the APF |
+| D2V3 | 15 Jul 2026 07:48 | 15–380 | near the APF |
 
 ## Conventions
 
 - **Format.** NetCDF-4. Each file has one group per record (`/D1V1`, `/D1V2`, `/D2V1`, `/D2V2`, `/D2V3`). Figure 15 covers only D1V2, D2V2, and D2V3. Variables shared by all records are stored at the root. Every variable has `units` and `long_name` attributes. The global attributes give the title, the figure number, the coordinate system, and the time reference.
 - **Coordinates.** Local frame with the origin at the APF. *x* points shoreward, toward 119° from grid north (UTM zone 52N), and *y* points alongshore, toward 29°. Figure 6 also uses UTM 52N easting and northing.
 - **Time.** Korea Standard Time (KST, UTC+9). Depending on the variable, time is given as hours or seconds since 2026-07-14 00:00 KST, or as seconds from the start of the video. The `units` attribute of each time variable states which.
-- **Elevation.** Metres relative to mean sea level (MSL).
+- **Elevation.** Metres relative to mean sea level (MSL). The camera height in the Figure 4 file is the height above the water surface.
 - **Missing values.** NaN marks missing or rejected samples.
 - **Abbreviations.**
   - APF: upward-looking acoustic Doppler profiler on the bed.
@@ -68,7 +68,7 @@ Each script draws its figure. To write PNG and PDF files, set `op.exportFig = tr
 
 ## Differences from the published figures
 
-- The bootstrap intervals in Figures 8, 11, 12, and 13 depend on random resampling. They differ from the published figures by up to 0.003 m s⁻¹ in magnitude and 2.2° in direction.
+- The bootstrap intervals in Figures 8, 11, 12, and 13 depend on random resampling. They differ from the published figures by up to 0.006 m s⁻¹ in magnitude and 2.3° in direction. For the same reason, the upper limit of the D1V2 interval in Table 3 of the article (1.9 % of the wind speed) is computed here as 2.0 %.
 - In Figure 6(d), the record lines are drawn at the exact video start times. In the published figure, these times were rounded down to the minute.
 
 ## Citation

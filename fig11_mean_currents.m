@@ -4,7 +4,9 @@
 %       and RGB PIV (surface), with the bore/crest celerity c_b = sqrt(g(h+Hs)) and the depth-mean flow under the
 %       bore c_b*Hs/(h+Hs) on the broken upper axis; error bars are 95 % bootstrap intervals.
 %   (b) Directions (flowing toward, clockwise from grid north) on a logarithmic radius, with 95 % direction arcs;
-%       dotted lines are +x (119 deg) and +y (29 deg).
+%       dotted lines are +x (119 deg) and +y (29 deg). The compasses are set in two rows (3 + 2).
+%   Symbols in the legend: U-bar_AThIVe = AThIVe surface time mean, U-bar_top = SWASH top-layer time mean,
+%   U-bar_APF = APF depth mean.
 %
 % Data: data/fig11_mean_currents.nc, one group per record (/D1V1 ... /D2V3), local frame x shoreward (119 deg),
 % y alongshore (29 deg), origin at the APF.
@@ -47,7 +49,9 @@ op.nbin = 12;  op.nmin = 3;  op.bandPh = [0.07 0.35];  op.nbootAPF = 1000;   % A
 op.g = 9.81;  op.rho = 1025;  op.zSensor = 0.15;                              % gravity, density, sensor height
 op.bandHs = [0.05 0.35];  op.kpMax = 5;  op.nseg = 128;  op.nbootBore = 2000; % bore/crest
 % sources: 1 AThIVe, 2 RGB PIV, 3 SWASH top layer, 4 APF depth mean, 5 bore/crest celerity, 6 depth-mean flow under it
-op.leg  = {'AThIVe, surface time mean', 'RGB PIV, surface time mean', 'SWASH, top-layer time mean', 'APF, depth mean'};
+op.Um   = char(362);                         % U with macron (overbar symbol of the mean current)
+op.leg  = {['AThIVe, surface time mean, \bf' op.Um '\rm_{AThIVe}'], 'RGB PIV, surface time mean', ...
+           ['SWASH, top-layer time mean, \bf' op.Um '\rm_{top}'], ['APF, depth mean, \bf' op.Um '\rm_{APF}']};
 op.legB = {'Bore/crest celerity, c_b = \surd(g(h+H_s))', 'Bore/crest depth-mean flow, c_bH_s/(h+H_s)'};
 op.col  = [0.09 0.63 0.52; 0.58 0.20 0.70; 0.10 0.35 0.75; 0.38 0.38 0.38];
 op.colB = [0.90 0.45 0.05; 0.99 0.80 0.56];
@@ -60,14 +64,16 @@ op.arcLW = 1.0;
 op.ylimA = [0 0.75];  op.ytickA = 0:0.1:0.7; % lower axis (mean current)
 op.ylimU = [0.75 7];  op.ytickU = 1:7;       % upper axis (bore/crest)
 op.barW = 0.135;  op.xlimA = [0.45 5.55];
-op.legCols = 3;  op.legRows = 2;
+op.legCols = 2;  op.legRows = 3;
 op.valFmt = '%.2f';  op.valGap = 0.10;
 op.rminLog = 0.02;  op.rmaxLog = 0.8;        % logarithmic compass radius (m s-1)
 op.rtickLog = [0.05 0.1 0.2 0.5];  op.rtickLogLabel = {'', '0.1', '', '0.5'};
-op.boxA = [10.0 3.6];  op.boxU = 1.6;  op.gapU = 0.12;  op.dC = 1.5;   % box sizes (in)
+op.boxA = [10.0 3.6];  op.boxU = 1.6;  op.gapU = 0.12;  op.dC = 2.2;   % box sizes (in)
+op.cGrid = [3 2];                            % compasses in the upper and lower row of (b)
 op.font = 'Arial';
-op.fs = struct('panel', 16, 'label', 14, 'tick', 14, 'legend', 12, 'small', 12, 'val', 10);
-op.ylabU = 'Bore/crest (m s^{-1})';  op.fsYlabU = 12;
+op.fs = struct('panel', 22, 'label', 20, 'tick', 20, 'legend', 17, 'small', 17, 'val', 14);
+op.ylabA = ['|\bf' op.Um '\rm| (m s^{-1})'];
+op.ylabU = 'Bore/crest (m s^{-1})';  op.fsYlabU = 16.8;
 op.panelPos = [-0.06 1.02];
 op.dpi = 300;
 
@@ -235,18 +241,25 @@ Mg.right  = 0.30;
 Mg.legend = op.legRows*1.45*em(f.legend) + 0.10;
 Mg.top    = max(Mg.legend, 1.4*em(f.panel)) + 0.10;
 Mg.belowA = 1.4*em(f.tick) + 0.18;
-Mg.aboveC = 1.5*em(f.tick) + 0.12;
+Mg.aboveC = 1.5*em(f.label) + 1.5*em(f.tick) + 0.12;     % record name and N label above each compass
 Mg.bottom = 1.5*em(f.tick) + 0.10;
 boxW = op.boxA(1);  boxH = op.boxA(2);
 fw = Mg.left + boxW + Mg.right;
-fh = Mg.bottom + op.dC + Mg.aboveC + Mg.belowA + boxH + op.gapU + op.boxU + Mg.top;
-yA = Mg.bottom + op.dC + Mg.aboveC + Mg.belowA;
+nRowC = numel(op.cGrid);                                                   % compass rows
+hC = Mg.bottom + op.dC + Mg.aboveC;                                        % height of one compass row
+fh = nRowC*hC + Mg.belowA + boxH + op.gapU + op.boxU + Mg.top;
+yA = nRowC*hC + Mg.belowA;
 POS = struct();
 POS.a = [Mg.left, yA, boxW, boxH] ./ [fw fh fw fh];                        % lower axis
 POS.u = [Mg.left, yA + boxH + op.gapU, boxW, op.boxU] ./ [fw fh fw fh];    % upper axis
-pitch = boxW/n;
-for i = 1:n
-    POS.c(i, :) = [Mg.left + (i - 0.5)*pitch - op.dC/2, Mg.bottom, op.dC, op.dC] ./ [fw fh fw fh];
+pitch = boxW/op.cGrid(1);
+for i = 1:n                                                                % lower row centred under the upper row
+    if i <= op.cGrid(1)
+        colC = i - 0.5;  yC = hC + Mg.bottom;
+    else
+        colC = i - op.cGrid(1) - 0.5 + (op.cGrid(1) - op.cGrid(2))/2;  yC = Mg.bottom;
+    end
+    POS.c(i, :) = [Mg.left + colC*pitch - op.dC/2, yC, op.dC, op.dC] ./ [fw fh fw fh];
 end
 fig = figure('Units', 'inches', 'Position', [0.2 0.2 fw fh], 'Color', 'w', 'Name', op.outName, ...
     'DefaultAxesFontName', op.font, 'DefaultTextFontName', op.font, 'DefaultLegendFontName', op.font, ...
@@ -288,7 +301,7 @@ set(axA, 'XTick', 1:n, 'XTickLabel', op.names, 'TickLabelInterpreter', 'tex', 'F
 set(axU, 'XTick', 1:n, 'XTickLabel', {}, 'FontSize', op.fs.tick, ...
     'TickDir', 'in', 'Box', 'on', 'YGrid', 'on', 'GridAlpha', 0.15, 'Layer', 'top', 'TickLength', [0.005 0.005], ...
     'YTick', op.ytickU);
-ylabel(axA, '|\bfU\rm| (m s^{-1})', 'FontSize', op.fs.label, 'Interpreter', 'tex');
+ylabel(axA, op.ylabA, 'FontSize', op.fs.label, 'Interpreter', 'tex');
 ylabel(axU, op.ylabU, 'FontSize', op.fsYlabU, 'Interpreter', 'tex');
 drawnow;                                                  % align both y labels
 axA.YLabel.Units = 'normalized';  axU.YLabel.Units = 'normalized';
@@ -340,6 +353,12 @@ for i = 1:n
         polarplot(pax, ta, r*ones(size(ta)), '-', 'Color', op.col(s, :), 'LineWidth', op.arcLW);
     end
     pax.Toolbar.Visible = 'off';
+end
+for i = 1:n                                                                % record name above each compass
+    pc = POS.c(i, :);
+    annotation(fig, 'textbox', [pc(1), pc(2) + pc(4) + 1.5*em(f.tick)/fh, pc(3), 1.5*em(f.label)/fh], ...
+        'String', op.names{i}, 'FontSize', op.fs.label, 'FontWeight', 'bold', 'FontName', op.font, ...
+        'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', 'EdgeColor', 'none', 'Margin', 0);
 end
 annotation(fig, 'textbox', [POS.a(1) + op.panelPos(1)*POS.a(3), POS.c(1, 2) + POS.c(1, 4) + 1.5*em(f.tick)/fh, ...
     0.05, 1.5*em(f.panel)/fh], 'String', '(b)', 'FontSize', op.fs.panel, 'FontWeight', 'bold', ...
