@@ -71,12 +71,6 @@ Each script draws its figure. To write PNG and PDF files, set `op.exportFig = tr
 - The bootstrap intervals in Figures 8, 11, 12, and 13 depend on random resampling. They differ from the published figures by up to 0.006 m s⁻¹ in magnitude and 2.3° in direction. For the same reason, the upper limit of the D1V2 interval in Table 3 of the article (1.9 % of the wind speed) is computed here as 2.0 %.
 - In Figure 6(d), the record lines are drawn at the exact video start times. In the published figure, these times were rounded down to the minute.
 
-## Citation
-
-If you use these data, please cite the article above and this dataset:
-
-> Baek, S., Park, Y.S., Hur, J., Jeong, H. (2026). *Field data and figure scripts for "Nearshore surface currents from a drone-mounted uncooled thermal camera using adaptive thermal image velocimetry (AThIVe)."* Zenodo. DOI: https://doi.org/10.5281/zenodo.24537293
-
 ## License
 
 The data and scripts are released under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
