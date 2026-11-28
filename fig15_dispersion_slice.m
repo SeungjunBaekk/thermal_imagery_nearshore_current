@@ -17,7 +17,8 @@
 %   h               water depth [m]
 %   wave_direction  wave propagation direction, angle from +x toward +y [deg]
 %   U_apf, V_apf    APF depth-mean current [m s^-1]
-%   U_athive, V_athive          AThIVe surface current, time mean over the analysis interval [m s^-1]
+%   U_athive, V_athive          AThIVe surface current, phase-balanced mean over the analysis interval (mean of the
+%                               means in 12 bins of the APF wave phase, as computed in fig13_wind_excess.m) [m s^-1]
 %   U_wind_drift, V_wind_drift  wind drift 0.03 U10 along the KMA wind [m s^-1]
 %   breaking        1 = breaking record (no wind-drift curve), 0 = non-breaking
 % Frame: x shoreward (119 deg), y alongshore (29 deg from grid north), origin at the APF.

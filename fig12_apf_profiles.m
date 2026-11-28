@@ -4,9 +4,9 @@
 %   Black circles: phase-balanced profiler means with 95 % intervals; black dashed line: their depth mean.
 %   Blue line and shading: SWASH fixed-height time mean below the trough level (mean of 5 alongshore points,
 %   +-2 standard deviations); blue dashed line: SWASH whole-depth mean; blue diamond: SWASH top-layer time mean
-%   (+-2 standard deviations of the 5 points) at the model mean water level. Square and triangle: AThIVe and
-%   RGB PIV surface means at the observed mean water level. Gray band: layer affected by side-lobe interference;
-%   black solid and blue dotted horizontal lines: observed and modeled mean water levels.
+%   (+-2 standard deviations of the 5 points) at the model mean water level. Square: AThIVe phase-balanced surface
+%   mean; triangle: RGB PIV surface time mean; both at the observed mean water level. Gray band: layer affected by
+%   side-lobe interference; black solid and blue dotted horizontal lines: observed and modeled mean water levels.
 %
 % Data: data/fig12_apf_profiles.nc, one group per record (/D1V1 ... /D2V3), local frame x shoreward (119 deg),
 % y alongshore (29 deg), origin at the APF.
@@ -16,6 +16,7 @@
 %   adcp_profile_window            10-min window of the phase-balanced mean [start end)             (s)
 %   adcp_depth_window              analysis interval on the APF clock [start end)                   (s)
 %   athive_t, athive_u, athive_v   AThIVe surface velocity at the APF over the analysis interval   (s, m s-1)
+%   athive_t0_apf                  time of athive_t = 0 on the APF clock (drone-APF clock offset included) (s)
 %   piv_t, piv_u, piv_v            RGB PIV surface velocity at the node nearest the APF            (s, m s-1)
 %   swash_t, swash_u_top, swash_v_top   SWASH top-layer velocity, time x 5 alongshore points       (s, m s-1)
 %   swash_hab                      SWASH fixed heights above the model bed                          (m)
@@ -32,7 +33,11 @@
 %                 limit = 0.906 x head + 0.15 m.
 %   SWASH         profile = mean of the 5 alongshore points, band = +-2 standard deviations; top layer = time
 %                 mean per point, then mean and 2 standard deviations over the points.
-%   AThIVe, PIV   time means over the analysis interval.
+%   AThIVe        phase-balanced mean over the analysis interval: the wave phase is the Hilbert phase of the APF
+%                 pressure (adcp_p) band-passed to 0.07-0.35 Hz (3rd-order Butterworth, zero phase) and interpolated
+%                 to the AThIVe times on the APF clock (athive_t + athive_t0_apf); samples are averaged in 12 phase
+%                 bins and the bins that hold samples are weighted equally.
+%   PIV           time mean over the analysis interval.
 %
 % Sections: 0 settings, 1 read data, 2 APF phase-balanced profiles, 3 means of the other estimates,
 %           4 figure, 5 row labels and y-label spacing, 6 export.
@@ -45,6 +50,7 @@ op.exportFig = false;
 op.outName   = 'fig12_apf_profiles';
 op.names     = {'D1V1', 'D1V2', 'D2V1', 'D2V2', 'D2V3'};
 op.nbin = 12;  op.nmin = 3;  op.bandPh = [0.07 0.35];  op.nbootAPF = 1000;  op.seed = 0;
+op.ordPh = 3;                                % Butterworth order of the band-pass for the AThIVe wave phase
 op.g = 9.81;  op.rho = 1025;  op.zSensor = 0.15;  op.sidelobe = 0.906;
 op.rowTags = {'(a)', '(b)'};
 op.fs = struct('tag', 11, 'head', 10, 'label', 9.5, 'tick', 9, 'legend', 9);
@@ -57,7 +63,7 @@ op.Um = char(362);                           % U with macron (overbar symbol of 
 op.legTop = {'APF, phase-balanced mean, 95% interval', ['APF, depth mean, \bf' op.Um '\rm_{APF}'], ...
              'SWASH, time mean (5 alongshore points)', 'SWASH, whole-depth mean', ...
              ['SWASH, top-layer time mean, \bf' op.Um '\rm_{top}'], ...
-             ['AThIVe, surface time mean, \bf' op.Um '\rm_{AThIVe}'], 'RGB PIV, surface time mean'};
+             ['AThIVe, surface phase-balanced mean, \bf' op.Um '\rm_{AThIVe}'], 'RGB PIV, surface time mean'};
 op.legCols = 2;
 op.ylabPad = 2;                              % extra y-label offset (pt)
 op.cEQ = [0 0 0];  op.cM = [0.10 0.35 0.75];  op.cT = [0.09 0.63 0.52];  op.cP = [0.58 0.20 0.70];
@@ -72,8 +78,8 @@ rd = @(i, v) double(ncread(op.dataFile, ['/' op.names{i} '/' v]));
 D = struct();
 for i = 1:n
     for v = {'adcp_t', 'adcp_p', 'adcp_hab', 'adcp_u', 'adcp_v', 'adcp_profile_window', 'adcp_depth_window', ...
-             'athive_t', 'athive_u', 'athive_v', 'piv_t', 'piv_u', 'piv_v', 'swash_t', 'swash_u_top', 'swash_v_top', ...
-             'swash_hab', 'swash_u_profile', 'swash_v_profile', 'swash_u_depthmean', 'swash_v_depthmean', ...
+             'athive_t', 'athive_u', 'athive_v', 'athive_t0_apf', 'piv_t', 'piv_u', 'piv_v', 'swash_t', 'swash_u_top', ...
+             'swash_v_top', 'swash_hab', 'swash_u_profile', 'swash_v_profile', 'swash_u_depthmean', 'swash_v_depthmean', ...
              'swash_mean_depth'}
         D(i).(v{1}) = rd(i, v{1});
     end
@@ -134,9 +140,22 @@ for i = 1:n
 end
 
 %% 3 means of the other estimates
+% phase-balanced mean of the rows k of X = [u v] with phase bins pb: bin means, then the mean of the bins with samples
+pbm = @(X, pb, k) mean([accumarray(pb(k), X(k, 1), [op.nbin 1]), accumarray(pb(k), X(k, 2), [op.nbin 1])] ./ ...
+                       accumarray(pb(k), 1, [op.nbin 1]), 1, 'omitnan');
 OTH = struct();
 for i = 1:n
-    OTH(i).tiv = [mean(D(i).athive_u, 'omitnan'), mean(D(i).athive_v, 'omitnan')];
+    % wave-phase bin of every AThIVe sample: zero-phase Butterworth band-pass of the APF pressure in the frequency
+    % domain (squared magnitude response), Hilbert phase, interpolated to the AThIVe times on the APF clock
+    p = D(i).adcp_p;  N = numel(p);  fsP = 1/median(diff(D(i).adcp_t));
+    W = tan(pi*min(0:N - 1, N - (0:N - 1)).'/N);  Wb = tan(pi*op.bandPh/fsP);
+    xb = real(ifft(fft(p - mean(p))./(1 + ((W.^2 - Wb(1)*Wb(2))./(W*(Wb(2) - Wb(1)))).^(2*op.ordPh))));
+    hw = zeros(N, 1);  hw(1) = 1;
+    if mod(N, 2) == 0, hw(N/2 + 1) = 1;  hw(2:N/2) = 2; else, hw(2:(N + 1)/2) = 2; end
+    phu = unwrap(angle(ifft(fft(xb).*hw)));
+    ph = angle(exp(1i*interp1(D(i).adcp_t, phu, D(i).athive_t + D(i).athive_t0_apf)));
+    pbT = min(max(floor((ph + pi)/(2*pi)*op.nbin), 0), op.nbin - 1) + 1;
+    OTH(i).tiv = pbm([D(i).athive_u, D(i).athive_v], pbT, isfinite(D(i).athive_u) & isfinite(D(i).athive_v));
     OTH(i).piv = [mean(D(i).piv_u, 'omitnan'), mean(D(i).piv_v, 'omitnan')];
     up = mean(D(i).swash_u_top, 1, 'omitnan');  vp = mean(D(i).swash_v_top, 1, 'omitnan');   % per point
     OTH(i).sw_top = [mean(up), mean(vp)];

@@ -8,8 +8,10 @@
 %
 % Data: data/fig13_wind_excess.nc, one group per record (/D1V1, /D1V2, /D2V1, /D2V2, /D2V3), attributes
 %   date and regime ('breaking' | 'non-breaking'). Frame: x shoreward toward 119 deg, y alongshore toward 29 deg
-%   (grid north), origin at the APF. Times in seconds since 2026-07-14 00:00:00 KST.
+%   (grid north), origin at the APF. Times in seconds since 2026-07-14 00:00:00 KST; AThIVe times on the drone
+%   clock, APF times on the APF clock.
 %   athive_time (s), athive_U, athive_V (m/s)   AThIVe surface velocity at the APF over the analysed interval
+%   clock_offset (s)                             drone clock minus APF clock
 %   apf_time (s), apf_eta (m)                    APF water level (pressure head anomaly) over the 10-min window
 %                                                centred on the AThIVe interval
 %   apf_hab (m), apf_U, apf_V (m/s, time x cell) APF profiler cells (screened samples are NaN)
@@ -17,8 +19,11 @@
 %   wave_toward (deg)                            APF mean wave direction (toward)
 %
 % Computation:
-%   AThIVe mean = time mean of the series; its 95% interval from a circular block bootstrap (20-s blocks,
-%   2000 resamples; half-width = half the 2.5-97.5 percentile range).
+%   AThIVe mean = phase-balanced mean: wave phase of each sample = Hilbert phase of the 0.07-0.35 Hz band-passed
+%   APF water level (third-order Butterworth, zero-phase) at the sample time on the APF clock
+%   (athive_time - clock_offset); 12 phase bins, mean of the samples in each bin, then the mean of the bins that
+%   hold samples. Its 95% interval from a circular block bootstrap of the series (20-s blocks, 2000 resamples, the
+%   phase-balanced mean recomputed in every resample; half-width = half the 2.5-97.5 percentile range).
 %   APF depth mean = phase-balanced (EQ) mean: phase of the 0.07-0.35 Hz band-passed water level (FFT band-pass,
 %   Hilbert phase), 12 phase bins, per cell the mean of the bin means (bins with >= 3 samples, cells with >= 11
 %   such bins), then the mean over the cells; its 95% interval = 1.96 x standard deviation of the same mean over
@@ -42,7 +47,8 @@ op.outName   = 'fig13_wind_excess';
 op.names     = {'D1V1', 'D1V2', 'D2V1', 'D2V2', 'D2V3'};
 op.xax = 119;  op.yax = 29;                 % fixed axes, bearing from grid north (deg)
 op.blkT  = 20;    op.nbootT = 2000;         % AThIVe circular block bootstrap: block (s), resamples
-op.band  = [0.07 0.35];                     % APF phase band (Hz)
+op.band  = [0.07 0.35];                     % wave phase band (Hz)
+op.bwOrd = 3;                               % order of the Butterworth band-pass for the AThIVe wave phase
 op.nb    = 12;    op.nmin = 3;              % phase bins, minimum samples per bin
 op.nbootA = 1000;                           % APF wave-cycle bootstrap resamples
 op.frac   = [0.0245 0.0370];                % drift band: fractions of U10 (1-cm current and skin drift, Liu et al., 2026)
@@ -74,7 +80,7 @@ n = numel(op.names);
 D = struct();
 for i = 1:n
     g = ['/' op.names{i} '/'];
-    for v = {'athive_time', 'athive_U', 'athive_V', 'apf_time', 'apf_eta', 'apf_hab', 'apf_U', 'apf_V', ...
+    for v = {'athive_time', 'athive_U', 'athive_V', 'clock_offset', 'apf_time', 'apf_eta', 'apf_hab', 'apf_U', 'apf_V', ...
              'kma_U10', 'kma_toward', 'wave_toward'}
         D(i).(v{1}) = ncread(op.dataFile, [g v{1}]);
     end
@@ -84,20 +90,30 @@ end
 %% 2 compute dU_obs and its intervals
 tiv = nan(n, 2);  tivCI = nan(n, 2);  apf = nan(n, 2);  apfCI = nan(n, 2);
 for i = 1:n
-    % AThIVe time mean and circular block bootstrap
+    % APF water level without gaps
+    t  = D(i).apf_time;  e = D(i).apf_eta;  m = numel(t);
+    ok = isfinite(e);  xi = interp1(t(ok), e(ok), t);  xi = xi - mean(xi);
+    % AThIVe wave phase: zero-phase Butterworth band-pass, Hilbert phase, at the AThIVe times on the APF clock
+    [bf, af] = butter(op.bwOrd, op.band * 2 * median(diff(t)));
+    phT = interp1(t, unwrap(angle(hilbert(filtfilt(bf, af, xi)))), D(i).athive_time - D(i).clock_offset);
+    pbT = min(op.nb, max(1, floor((angle(exp(1i * phT)) + pi) / (2 * pi) * op.nb) + 1));
+    % AThIVe phase-balanced mean (r = 0) and circular block bootstrap (r >= 1)
     X  = [D(i).athive_U D(i).athive_V];  N = size(X, 1);
     L  = round(op.blkT / median(diff(D(i).athive_time)));  nbk = ceil(N / L);
     B  = nan(op.nbootT, 2);
-    for r = 1:op.nbootT
-        idx = mod((randi(N, nbk, 1) - 1)' + (0:L - 1)', N) + 1;
-        idx = idx(1:N);
-        B(r, :) = mean(X(idx, :), 1, 'omitnan');
+    for r = 0:op.nbootT
+        if r == 0
+            idx = (1:N)';
+        else
+            idx = mod((randi(N, nbk, 1) - 1)' + (0:L - 1)', N) + 1;
+            idx = idx(1:N)';
+        end
+        cnt = accumarray(pbT(idx), 1, [op.nb 1]);
+        mb  = [accumarray(pbT(idx), X(idx, 1), [op.nb 1]), accumarray(pbT(idx), X(idx, 2), [op.nb 1])] ./ cnt;   % empty bin = NaN
+        if r == 0, tiv(i, :) = mean(mb, 1, 'omitnan'); else, B(r, :) = mean(mb, 1, 'omitnan'); end
     end
-    tiv(i, :)   = mean(X, 1, 'omitnan');
     tivCI(i, :) = (prctile(B, 97.5, 1) - prctile(B, 2.5, 1)) / 2;
     % APF phase: FFT band-pass of the water level, Hilbert phase, 12 bins, wave cycles from the unwrapped phase
-    t  = D(i).apf_time;  e = D(i).apf_eta;  m = numel(t);
-    ok = isfinite(e);  xi = interp1(t(ok), e(ok), t);  xi = xi - mean(xi);
     k  = (0:m - 1)';  fk = min(k, m - k) * (1 / (m * median(diff(t))));   % bin frequencies (k x 1/(m dt))
     Xf = fft(xi);  Xf(fk < op.band(1) | fk > op.band(2)) = 0;
     ph = angle(hilbert(real(ifft(Xf))));

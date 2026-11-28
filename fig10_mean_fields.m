@@ -1,5 +1,5 @@
 % fig10_mean_fields.m
-% Figure 10: time-mean AThIVe surface velocity of each record (every second node) in the local coordinates
+% Figure 10: phase-balanced mean AThIVe surface velocity of each record (every second node) in the local coordinates
 % (x shoreward, y alongshore), with the thermal footprint (dashed) and the analysis grid (solid), the APF
 % (origin) and the ACM.
 %
@@ -8,18 +8,23 @@
 %   x, y                    (node)        m      node positions
 %   node_col, node_row      (node)        -      column/row index of the node in the regular grid
 %   u, v                    (time, node)  m s-1  AThIVe surface velocity, x and y components (NaN = no vector)
+%   apf_wave_phase          (time)        rad    wave phase of the APF pressure at the sample times (Hilbert phase of the
+%                                                0.07-0.35 Hz band-passed pressure after the drone-APF clock offset), -pi..pi;
+%                                                D1V2 uses the clock offset of D1V1
 %   footprint_x, footprint_y (corner)     m      corners of the thermal image footprint
 %   grid_x, grid_y          (corner)      m      corners of the analysis grid outline
 %   analysis_interval       (bound)       s      start and end of the analysis interval
 % and at the root: acm_xy (xy) m, position of the ACM.
 %
 % Computation:
-%   - Time mean of u and v at each node over the samples inside the analysis interval (NaN samples ignored);
-%     nodes with valid samples in less than half of the interval are left blank.
+%   - Phase-balanced mean of u and v at each node: the valid samples inside the analysis interval are averaged in
+%     12 bins (30 deg) of the APF wave phase (the same phase for all nodes), then the bins that hold at least one
+%     valid sample are averaged with equal weights; nodes with valid samples in less than half of the interval are
+%     left blank.
 %   - Arrows are drawn at every second node in both grid directions, phased so that the node nearest the APF is drawn.
 %   - The ACM marker is filled when the ACM lies inside the analysis grid outline.
 %
-% Sections: 0 settings, 1 read data and time means, 2 layout, 3 figure, 4 export.
+% Sections: 0 settings, 1 read data and phase-balanced means, 2 layout, 3 figure, 4 export.
 % Run from this folder.
 
 %% 0 settings
@@ -29,6 +34,7 @@ op.exportFig = false;
 op.outName   = 'fig10_mean_fields';
 op.records   = {'D1V1', 'D1V2', 'D2V1', 'D2V2', 'D2V3'};
 op.minValid  = 0.5;                       % minimum fraction of valid samples at a node
+op.nBin      = 12;                        % number of wave-phase bins of the phase-balanced mean
 op.layout    = [2 3];                     % rows x columns; the sixth cell holds the legend
 op.stride    = 2;                         % arrows at every second node
 op.arrowK    = 8;                         % arrow length [m per m s^-1]
@@ -41,13 +47,13 @@ op.gapIn     = 0.10;                      % gap between panels [in]
 op.font      = 'Arial';
 op.fs        = struct('head', 8.5, 'label', 8, 'tick', 7.5, 'legend', 7.5);
 op.lw        = struct('arrow', 0.6, 'frame', 0.6, 'grid', 0.7, 'ms', 5);
-op.Um        = char(362);                 % U with macron (overbar symbol of the time mean)
+op.Um        = char(362);                 % U with macron (overbar symbol of the mean)
 op.legLabels = {'APF', 'ACM, inside the grid', 'ACM, outside the grid', 'Thermal footprint', ...
-                'Analysis grid', ['AThIVe time mean, \bf' op.Um '\rm_{AThIVe}']};
+                'Analysis grid', sprintf('AThIVe phase-balanced\nmean, %s', ['\bf' op.Um '\rm_{AThIVe}'])};
 op.dpi       = 300;
 nR = numel(op.records);
 
-%% 1 read data and time means
+%% 1 read data and phase-balanced means
 acm = ncread(op.dataFile, '/acm_xy')';
 FLD = struct([]);
 for i = 1:nR
@@ -56,9 +62,17 @@ for i = 1:nR
     tw = ncread(op.dataFile, [g 'analysis_interval']);
     u  = ncread(op.dataFile, [g 'u']);                                  % node x time
     v  = ncread(op.dataFile, [g 'v']);
+    ph = ncread(op.dataFile, [g 'apf_wave_phase']);                     % wave phase of each sample [rad]
     k  = t >= tw(1) & t <= tw(2);
     nv = sum(isfinite(u(:, k)) & isfinite(v(:, k)), 2);
-    U  = mean(u(:, k), 2, 'omitnan');  V = mean(v(:, k), 2, 'omitnan');
+    okS = isfinite(u) & isfinite(v) & k';                               % valid samples inside the analysis interval
+    ib = min(max(floor((ph' + pi)/(2*pi)*op.nBin), 0), op.nBin - 1);    % phase bin of each sample (0-based)
+    Ub = nan(numel(nv), op.nBin);  Vb = Ub;
+    for b = 1:op.nBin
+        m = okS & ib == b - 1;  ub = u;  ub(~m) = 0;  vb = v;  vb(~m) = 0;
+        Ub(:, b) = sum(ub, 2)./sum(m, 2);  Vb(:, b) = sum(vb, 2)./sum(m, 2);   % bin without a valid sample = NaN
+    end
+    U  = mean(Ub, 2, 'omitnan');  V = mean(Vb, 2, 'omitnan');           % equal-weight mean of the filled bins
     bad = nv < op.minValid * nnz(k);  U(bad) = NaN;  V(bad) = NaN;
     FLD(i).name = op.records{i};
     FLD(i).x  = ncread(op.dataFile, [g 'x']);  FLD(i).y = ncread(op.dataFile, [g 'y']);

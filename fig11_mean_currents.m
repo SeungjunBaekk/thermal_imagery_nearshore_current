@@ -5,12 +5,13 @@
 %       bore c_b*Hs/(h+Hs) on the broken upper axis; error bars are 95 % bootstrap intervals.
 %   (b) Directions (flowing toward, clockwise from grid north) on a logarithmic radius, with 95 % direction arcs;
 %       dotted lines are +x (119 deg) and +y (29 deg). The compasses are set in two rows (3 + 2).
-%   Symbols in the legend: U-bar_AThIVe = AThIVe surface time mean, U-bar_top = SWASH top-layer time mean,
+%   Symbols in the legend: U-bar_AThIVe = AThIVe surface phase-balanced mean, U-bar_top = SWASH top-layer time mean,
 %   U-bar_APF = APF depth mean.
 %
 % Data: data/fig11_mean_currents.nc, one group per record (/D1V1 ... /D2V3), local frame x shoreward (119 deg),
 % y alongshore (29 deg), origin at the APF.
 %   athive_t, athive_u, athive_v   AThIVe surface velocity at the APF over the analysis interval   (s, m s-1)
+%   athive_t0_apf                  time of athive_t = 0 on the APF clock (drone-APF clock offset included) (s)
 %   piv_t, piv_u, piv_v            RGB PIV surface velocity at the node nearest the APF            (s, m s-1)
 %   swash_t                        SWASH model time, 1200-2100 s                                    (s)
 %   swash_u_top, swash_v_top       SWASH top-layer velocity, time x 5 alongshore points             (m s-1)
@@ -18,19 +19,29 @@
 %   adcp_hab                       profiler cell height above the bed                               (m)
 %   adcp_u, adcp_v                 profiler velocity, time x cell, quality-controlled (NaN = rejected) (m s-1)
 %   adcp_profile_window            10-min window of the phase-balanced mean [start end)             (s)
-%   adcp_bore_window               10-min window of the bore/crest celerity [start end)             (s)
+%   adcp_bore_window               10-min window of the bore/crest intervals [start end)            (s)
+%   adcp_t_table1, adcp_p_table1   APF time and pressure from 5 min before the start to 5 min after the end of
+%                                  the video (window of h and Hs in Table 1 of the article)        (s, dbar)
 %
 % Statistics computed here:
-%   AThIVe, RGB PIV, SWASH  time mean over the stored series (SWASH: mean of the 5 alongshore points first);
+%   RGB PIV, SWASH          time mean over the stored series (SWASH: mean of the 5 alongshore points first);
 %                           95 % interval from a circular block bootstrap (20-s blocks, 2000 resamples).
+%   AThIVe                  phase-balanced mean: the wave phase is the Hilbert phase of the APF pressure (adcp_p)
+%                           band-passed to 0.07-0.35 Hz (3rd-order Butterworth, zero phase) and interpolated to the
+%                           AThIVe times on the APF clock (athive_t + athive_t0_apf); samples are averaged in 12
+%                           phase bins and the bins that hold samples are weighted equally. 95 % interval: the same
+%                           block bootstrap, with the phase-balanced mean recomputed in every resample.
 %   APF depth mean          phase-balanced mean per cell: the wave phase is the Hilbert phase of the APF pressure
 %                           band-passed to 0.07-0.35 Hz; samples are averaged in 12 phase bins (bins with >= 3
 %                           samples) and the bins are weighted equally (cells need >= 11 bins); the depth mean is the
 %                           mean over the cells. 95 % interval: bootstrap of whole wave cycles (1000 resamples).
-%   Bore/crest              h = mean pressure head + 0.15 m; Hs = 4 sqrt(m0) of the pressure spectrum (Welch, 128-s
-%                           Hann segments, 50 % overlap) converted to the surface with linear wave theory
-%                           (attenuation factor <= 5) over 0.05-0.35 Hz; c_b = sqrt(g(h+Hs)), u_b = c_b Hs/(h+Hs).
-%                           95 % interval: bootstrap of zero-downcrossing waves of the surface elevation (2000).
+%   Bore/crest              h and Hs of Table 1 of the article: h = mean hydrostatic pressure head + 0.15 m and
+%                           Hs = 4 standard deviations of that head over the video span +-5 min, rounded as printed
+%                           in Table 1 (h to two decimals; Hs to three, then two); c_b = sqrt(g(h+Hs)),
+%                           u_b = c_b Hs/(h+Hs). 95 % interval: bootstrap of the zero-downcrossing waves (2000) of
+%                           the surface elevation in the 10-min window (pressure converted with linear wave theory
+%                           over 0.05-0.35 Hz, attenuation factor <= 5); each resample scales Hs by the ratio of
+%                           the root-mean-square elevations and shifts h by the change of the mean head.
 %   Speed and direction intervals are percentiles of the speed and direction of the resampled mean vectors.
 %
 % Sections: 0 settings, 1 read data, 2 surface and model means, 3 APF phase-balanced depth mean,
@@ -46,11 +57,12 @@ op.names     = {'D1V1', 'D1V2', 'D2V1', 'D2V2', 'D2V3'};
 op.xax = 119;  op.yax = 29;                  % bearings of +x and +y (deg from grid north)
 op.blk = 20;  op.nboot = 2000;  op.seed = 0; % block length (s), resamples, random seed (surface and model series)
 op.nbin = 12;  op.nmin = 3;  op.bandPh = [0.07 0.35];  op.nbootAPF = 1000;   % APF phase-balanced mean
+op.ordPh = 3;                                % Butterworth order of the band-pass for the AThIVe wave phase
 op.g = 9.81;  op.rho = 1025;  op.zSensor = 0.15;                              % gravity, density, sensor height
-op.bandHs = [0.05 0.35];  op.kpMax = 5;  op.nseg = 128;  op.nbootBore = 2000; % bore/crest
+op.bandHs = [0.05 0.35];  op.kpMax = 5;  op.nbootBore = 2000;                 % bore/crest intervals
 % sources: 1 AThIVe, 2 RGB PIV, 3 SWASH top layer, 4 APF depth mean, 5 bore/crest celerity, 6 depth-mean flow under it
 op.Um   = char(362);                         % U with macron (overbar symbol of the mean current)
-op.leg  = {['AThIVe, surface time mean, \bf' op.Um '\rm_{AThIVe}'], 'RGB PIV, surface time mean', ...
+op.leg  = {['AThIVe, surface phase-balanced mean, \bf' op.Um '\rm_{AThIVe}'], 'RGB PIV, surface time mean', ...
            ['SWASH, top-layer time mean, \bf' op.Um '\rm_{top}'], ['APF, depth mean, \bf' op.Um '\rm_{APF}']};
 op.legB = {'Bore/crest celerity, c_b = \surd(g(h+H_s))', 'Bore/crest depth-mean flow, c_bH_s/(h+H_s)'};
 op.col  = [0.09 0.63 0.52; 0.58 0.20 0.70; 0.10 0.35 0.75; 0.38 0.38 0.38];
@@ -82,8 +94,9 @@ n = numel(op.names);
 rd = @(i, v) double(ncread(op.dataFile, ['/' op.names{i} '/' v]));
 D = struct();
 for i = 1:n
-    for v = {'athive_t', 'athive_u', 'athive_v', 'piv_t', 'piv_u', 'piv_v', 'swash_t', 'swash_u_top', 'swash_v_top', ...
-             'adcp_t', 'adcp_p', 'adcp_hab', 'adcp_u', 'adcp_v', 'adcp_profile_window', 'adcp_bore_window'}
+    for v = {'athive_t', 'athive_u', 'athive_v', 'athive_t0_apf', 'piv_t', 'piv_u', 'piv_v', 'swash_t', 'swash_u_top', ...
+             'swash_v_top', 'adcp_t', 'adcp_p', 'adcp_hab', 'adcp_u', 'adcp_v', 'adcp_profile_window', 'adcp_bore_window', ...
+             'adcp_t_table1', 'adcp_p_table1'}
         D(i).(v{1}) = rd(i, v{1});
     end
 end
@@ -93,9 +106,22 @@ ns = 4;
 VAL = nan(n, ns, 2);  BOOT = cell(n, ns);
 toBrg = @(x, y) mod(atan2d(x*sind(op.xax) + y*sind(op.yax), x*cosd(op.xax) + y*cosd(op.yax)), 360);
 wrap  = @(a) mod(a + 180, 360) - 180;
+% phase-balanced mean of the rows k of X = [u v] with phase bins pb: bin means, then the mean of the bins with samples
+pbm = @(X, pb, k) mean([accumarray(pb(k), X(k, 1), [op.nbin 1]), accumarray(pb(k), X(k, 2), [op.nbin 1])] ./ ...
+                       accumarray(pb(k), 1, [op.nbin 1]), 1, 'omitnan');
 rng(op.seed);
 rsX = RandStream('mt19937ar', 'Seed', op.seed + 1);
 for i = 1:n
+    % wave-phase bin of every AThIVe sample: zero-phase Butterworth band-pass of the APF pressure in the frequency
+    % domain (squared magnitude response), Hilbert phase, interpolated to the AThIVe times on the APF clock
+    p = D(i).adcp_p;  N = numel(p);  fsP = 1/median(diff(D(i).adcp_t));
+    W = tan(pi*min(0:N - 1, N - (0:N - 1)).'/N);  Wb = tan(pi*op.bandPh/fsP);
+    xb = real(ifft(fft(p - mean(p))./(1 + ((W.^2 - Wb(1)*Wb(2))./(W*(Wb(2) - Wb(1)))).^(2*op.ordPh))));
+    hw = zeros(N, 1);  hw(1) = 1;
+    if mod(N, 2) == 0, hw(N/2 + 1) = 1;  hw(2:N/2) = 2; else, hw(2:(N + 1)/2) = 2; end
+    phu = unwrap(angle(ifft(fft(xb).*hw)));
+    ph = angle(exp(1i*interp1(D(i).adcp_t, phu, D(i).athive_t + D(i).athive_t0_apf)));
+    pbT = min(max(floor((ph + pi)/(2*pi)*op.nbin), 0), op.nbin - 1) + 1;
     srs = {1, D(i).athive_t, [D(i).athive_u, D(i).athive_v], []; ...
            3, D(i).swash_t, [mean(D(i).swash_u_top, 2), mean(D(i).swash_v_top, 2)], []; ...
            2, D(i).piv_t, [D(i).piv_u, D(i).piv_v], rsX};
@@ -107,9 +133,13 @@ for i = 1:n
             if isempty(rs), st0 = randi(N, 1, nb); else, st0 = randi(rs, N, 1, nb); end
             rows = mod(st0 - 1 + (0:L - 1).', N) + 1;     % circular blocks of L samples
             rows = rows(1:N);
-            Bm(b, :) = mean(X(rows, :), 1, 'omitnan');
+            if s == 1                             % AThIVe: phase-balanced mean of the resample
+                Bm(b, :) = pbm(X(rows, :), pbT(rows), all(isfinite(X(rows, :)), 2));
+            else
+                Bm(b, :) = mean(X(rows, :), 1, 'omitnan');
+            end
         end
-        VAL(i, s, :) = mean(X, 1, 'omitnan');
+        if s == 1, VAL(i, s, :) = pbm(X, pbT, all(isfinite(X), 2)); else, VAL(i, s, :) = mean(X, 1, 'omitnan'); end
         BOOT{i, s} = Bm;
     end
     % the published figure drew from rsX once more per record (model depth mean, not plotted): skip the same draws
@@ -180,32 +210,22 @@ end
 BORE = nan(n, 8);                            % h, Hs, c_b, c_b lo, c_b hi, u_b, u_b lo, u_b hi
 rsB = RandStream('mt19937ar', 'Seed', op.seed);
 for i = 1:n
+    % h and Hs of Table 1: mean and 4 standard deviations of the hydrostatic head over the video span +-5 min
+    hd = D(i).adcp_p_table1*1e4/(op.rho*op.g);
+    h = round(mean(hd) + op.zSensor, 2);  Hs = round(round(4*std(hd, 1), 3), 2);   % as printed in Table 1
+    cb = sqrt(op.g*(h + Hs));  ub = cb*Hs/(h + Hs);
+    % 10-min window: pressure head above the sensor (m) and its mean depth
     m = D(i).adcp_t >= D(i).adcp_bore_window(1) & D(i).adcp_t < D(i).adcp_bore_window(2);
-    pm = D(i).adcp_p(m)*1e4/(op.rho*op.g);   % pressure head above the sensor (m)
-    N = numel(pm);  h = mean(pm) + op.zSensor;
+    pm = D(i).adcp_p(m)*1e4/(op.rho*op.g);
+    N = numel(pm);  h10 = mean(pm) + op.zSensor;
     x = pm - polyval(polyfit((0:N - 1).', pm, 1), (0:N - 1).');
-    % Welch spectrum of the head (1 Hz): Hann segments, 50 % overlap, linear detrend per segment
-    Ls = op.nseg;  if N < 2*Ls, Ls = floor(N/2); end
-    hn = 0.5 - 0.5*cos(2*pi*(0:Ls - 1).'/Ls);
-    st = 1:Ls/2:(N - Ls + 1);  tt = (0:Ls - 1).';
-    Spp = zeros(Ls/2 + 1, 1);
-    for s0 = st
-        seg = x(s0:s0 + Ls - 1);  seg = seg - polyval(polyfit(tt, seg, 1), tt);
-        F = fft(seg.*hn);  Spp = Spp + abs(F(1:Ls/2 + 1)).^2;
-    end
-    Spp = Spp/numel(st)/sum(hn.^2);  Spp(2:end - 1) = 2*Spp(2:end - 1);
-    f = (0:Ls/2).'/Ls;
-    % linear wavenumber (Newton on kh) for the spectrum and FFT frequencies
+    % linear wavenumber (Newton on kh) at the FFT frequencies
     fk = min(0:N - 1, N - (0:N - 1)).'*(1/N);
-    fa = [f; fk];  w2h = (2*pi*fa).^2*h/op.g;
+    w2h = (2*pi*fk).^2*h10/op.g;
     kh = sqrt(max(w2h, 1e-12));  kh(w2h >= 1) = w2h(w2h >= 1);
     for it = 1:60, th = tanh(kh);  kh = kh - (kh.*th - w2h)./(th + kh.*(1 - th.^2)); end
-    ka = kh/h;  ka(fa == 0) = 0;
-    Kp = min(cosh(ka*h)./cosh(ka*op.zSensor), op.kpMax);
-    Kf = Kp(1:numel(f));  Ke = Kp(numel(f) + 1:end);
-    bnd = f >= op.bandHs(1) & f <= op.bandHs(2);
-    Hs = 4*sqrt(sum(Spp(bnd).*Kf(bnd).^2)*(f(2) - f(1)));
-    cb = sqrt(op.g*(h + Hs));  ub = cb*Hs/(h + Hs);
+    ka = kh/h10;  ka(fk == 0) = 0;
+    Ke = min(cosh(ka*h10)./cosh(ka*op.zSensor), op.kpMax);
     % surface elevation (FFT transfer, 0.05-0.35 Hz) and zero-downcrossing waves
     Ke(fk < op.bandHs(1) | fk > op.bandHs(2)) = 0;
     eta = real(ifft(fft(x).*Ke));
@@ -217,11 +237,12 @@ for i = 1:n
     nn = a1 - a0;
     pp = arrayfun(@(j) sum(pm(a0(j):a1(j) - 1)), (1:nW).');
     e2all = sum(e2)/sum(nn);
+    % resampled waves: Hs scaled by the root-mean-square elevation, h shifted by the mean head
     Bc = zeros(op.nbootBore, 1);  Bu = Bc;
     for b = 1:op.nbootBore
         j = randi(rsB, nW, nW, 1);
         Hs_ = Hs*sqrt((sum(e2(j))/sum(nn(j)))/e2all);
-        h_ = sum(pp(j))/sum(nn(j)) + op.zSensor;
+        h_ = h + sum(pp(j))/sum(nn(j)) + op.zSensor - h10;
         Bc(b) = sqrt(op.g*(h_ + Hs_));  Bu(b) = Bc(b)*Hs_/(h_ + Hs_);
     end
     BORE(i, :) = [h, Hs, cb, prctile(Bc, [2.5 97.5]), ub, prctile(Bu, [2.5 97.5])];

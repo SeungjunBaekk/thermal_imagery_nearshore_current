@@ -15,10 +15,10 @@ The data were collected at Mallipo Beach, on the west coast of the Taean Peninsu
 | 7 | `fig07_swash_maps.m` | `data/fig07_swash_maps.nc` | SWASH time-mean velocity and wave energy dissipation rate |
 | 8 | `fig08_swash_profiles.m` | `data/fig08_swash_profiles.nc` | Cross-shore SWASH profiles with observations at the APF and the ACM |
 | 9 | `fig09_velocity_series.m` | `data/fig09_velocity_series.nc` | Cross-shore velocity at the APF from AThIVe and the profiler depth mean |
-| 10 | `fig10_mean_fields.m` | `data/fig10_mean_fields.nc` | Time-mean AThIVe surface velocity fields |
-| 11 | `fig11_mean_currents.m` | `data/fig11_mean_currents.nc` | Mean current at the APF from AThIVe, SWASH, the profiler, and RGB PIV |
+| 10 | `fig10_mean_fields.m` | `data/fig10_mean_fields.nc` | Phase-balanced mean AThIVe surface velocity fields |
+| 11 | `fig11_mean_currents.m` | `data/fig11_mean_currents.nc` | Mean current at the APF from AThIVe, SWASH, the profiler, and RGB PIV, with the bore celerity |
 | 12 | `fig12_apf_profiles.m` | `data/fig12_apf_profiles.nc` | Vertical structure of the mean current at the APF |
-| 13 | `fig13_wind_excess.m` | `data/fig13_wind_excess.nc` | Observed surface excess (AThIVe mean minus profiler depth mean) relative to the KMA 10-m wind |
+| 13 | `fig13_wind_excess.m` | `data/fig13_wind_excess.nc` | Observed surface excess (AThIVe mean minus profiler depth mean at the APF) relative to the KMA 10-m wind |
 | 14 | `fig14_phase_ensembles.m` | `data/fig14_phase_ensembles.nc` | Wave-phase ensembles and velocity spectra at the APF |
 | 15 | `fig15_dispersion_slice.m` | `data/fig15_dispersion_slice.nc` | Wavenumber–frequency spectra of the visible video around the APF |
 
@@ -43,7 +43,8 @@ Not included in this repository:
 
 - **Format.** NetCDF-4. Each file has one group per record (`/D1V1`, `/D1V2`, `/D2V1`, `/D2V2`, `/D2V3`). Figure 15 covers only D1V2, D2V2, and D2V3. Variables shared by all records are stored at the root. Every variable has `units` and `long_name` attributes. The global attributes give the title, the figure number, the coordinate system, and the time reference.
 - **Coordinates.** Local frame with the origin at the APF. *x* points shoreward, toward 119° from grid north (UTM zone 52N), and *y* points alongshore, toward 29°. Figure 6 also uses UTM 52N easting and northing.
-- **Time.** Korea Standard Time (KST, UTC+9). Depending on the variable, time is given as hours or seconds since 2026-07-14 00:00 KST, or as seconds from the start of the video. The `units` attribute of each time variable states which.
+- **Time.** Korea Standard Time (KST, UTC+9). Depending on the variable, time is given as hours or seconds since 2026-07-14 00:00 KST, or as seconds from the start of the video. The `units` attribute of each time variable states which. AThIVe times are on the drone clock and profiler times are on the profiler clock. The scalar `clock_offset` (Figures 9 and 13) or `athive_t0_apf` (Figures 11 and 12) of each record converts between the two clocks. D1V2 has no clock synchronization of its own and uses the offset of D1V1. In the Figure 10 file, `apf_wave_phase` is given at the AThIVe sample times with the offset applied.
+- **Mean currents.** The mean AThIVe velocity (Figures 10–13 and 15) and the profiler depth mean at the APF (Figures 11–13 and 15) are phase-balanced means: the samples are averaged in 12 bins of the wave phase of the APF pressure, and the bins are weighted equally. The scripts of Figures 10–13 compute these means from the stored series.
 - **Elevation.** Metres relative to mean sea level (MSL). The camera height in the Figure 4 file is the height above the water surface.
 - **Missing values.** NaN marks missing or rejected samples.
 - **Abbreviations.**
@@ -68,7 +69,7 @@ Each script draws its figure. To write PNG and PDF files, set `op.exportFig = tr
 
 ## Differences from the published figures
 
-- The bootstrap intervals in Figures 8, 11, 12, and 13 depend on random resampling. They differ from the published figures by up to 0.006 m s⁻¹ in magnitude and 2.3° in direction. For the same reason, the upper limit of the D1V2 interval in Table 3 of the article (1.9 % of the wind speed) is computed here as 2.0 %.
+- The bootstrap intervals in Figures 8, 11, 12, and 13 depend on random resampling. They differ from the published figures by up to 0.004 m s⁻¹ in magnitude and 2.3° in direction. For the same reason, the lower limit of the D1V2 interval in Table 3 of the article (0.3 % of the wind speed) is computed here as 0.2 %.
 - In Figure 6(d), the record lines are drawn at the exact video start times. In the published figure, these times were rounded down to the minute.
 
 ## License

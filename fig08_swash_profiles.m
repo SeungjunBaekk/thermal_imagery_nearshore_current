@@ -12,8 +12,8 @@
 %       apf_U, apf_V (time,cell) m s^-1 cross-shore (119 deg) and alongshore (29 deg) velocity
 %       apf_corr, apf_pgood (time,cell) percent  beam correlation and percent good
 %       analysis_interval (s) [start end) of the AThIVe analysis interval
-%     wave height: apf_wave_time, apf_wave_pressure (s, dbar); acm_time, acm_pressure (s, dbar)
-%       apf_buoy_ratio (1)  tethered-buoy / pressure Hm0 ratio over the same interval (1 = no valid buoy track)
+%     wave height, 1-Hz pressure from 5 min before the start to 5 min after the end of the video (seconds from time_origin)
+%       apf_wave_time, apf_wave_pressure (s, dbar); acm_time, acm_pressure (s, dbar)
 %     swash_hab_top (m)   top of the SWASH fixed-height mean profile at the APF (below the wave trough)
 %   root: apf_x, acm_x (m); apf_sensor_hab, acm_sensor_hab (m) pressure-sensor heights above the bed
 %
@@ -22,9 +22,9 @@
 %     drawn where the band-mean total depth > 0.2 m. D = -d(E c_g)/dx, E = rho g Hs^2/16, c_g = linear group velocity
 %     at Tp and the time-mean total depth (Hs not used where that depth < 0.2 m); E c_g is smoothed by moving means
 %     over 5 m in x and 3 rows (15 m) in y, differenced centrally in x, and not used for x < -100 m.
-%   Hs: Hm0 over 0.05-0.35 Hz of the pressure spectrum (linear detrend, Welch 128 s periodic Hann with 50% overlap and
-%     linear detrend of each segment) converted to the surface with Kp = cosh(kH)/cosh(k z_s) <= 5; at the APF the
-%     pressure value is multiplied by sqrt(apf_buoy_ratio).
+%   Hs: 4 standard deviations of the hydrostatic pressure head p/(rho g) over the video span +-5 min (no depth-attenuation
+%     correction, no band limit), the definition of Table 1 of the article; the APF value is rounded as printed in
+%     Table 1 (to three decimals, then to two).
 %   APF mean current (phase-balanced): cells kept where the mean correlation > 65% and percent good > 40% over the
 %     analysis interval and over the window and below the side-lobe limit 0.906 h; samples with correlation or percent
 %     good < 50% are dropped; the wave phase of the 0.07-0.35 Hz band-passed pressure (Hilbert transform) is divided
@@ -47,8 +47,6 @@ op.hwet      = 0.05;                     % wet: time-mean total depth (m)
 op.hwetP     = 0.20;                     % profiles drawn where the band-mean total depth exceeds this (m)
 op.rho       = 1025;  op.g = 9.81;
 op.dpMin     = 0.20;  op.smoothX = 5;  op.smoothY = 3;  op.xDmin = -100;   % D: min depth, smoothing x (m), y (rows), offshore limit
-op.band      = [0.05 0.35];              % Hm0 band (Hz)
-op.nps       = 128;  op.kpMax = 5;       % Welch segment (samples at 1 Hz), cap of the pressure-to-surface factor Kp
 op.corrMin   = 65;  op.pgMin = 40;  op.sideLobe = 0.906;   % cell selection
 op.cMin      = 50;  op.pMin = 50;        % sample screening
 op.fPhase    = [0.07 0.35];  op.nBin = 12;  op.nMin = 3;   % phase bins
@@ -71,7 +69,7 @@ op.dpi       = 300;
 nRec = numel(op.names);
 rd = @(g, v) double(ncread(op.dataFile, ['/' g '/' v]));
 xAPF = ncread(op.dataFile, 'apf_x');  xACM = ncread(op.dataFile, 'acm_x');
-habAPF = ncread(op.dataFile, 'apf_sensor_hab');  habACM = ncread(op.dataFile, 'acm_sensor_hab');
+habAPF = ncread(op.dataFile, 'apf_sensor_hab');
 MD = struct([]);  OB = struct([]);
 for i = 1:nRec
     g = op.names{i};
@@ -82,7 +80,7 @@ for i = 1:nRec
     OB(i).U = rd(g, 'apf_U');  OB(i).V = rd(g, 'apf_V');  OB(i).cr = rd(g, 'apf_corr');  OB(i).pg = rd(g, 'apf_pgood');
     OB(i).ana = rd(g, 'analysis_interval');
     OB(i).pw = rd(g, 'apf_wave_pressure');  OB(i).pa = rd(g, 'acm_pressure');
-    OB(i).ratio = rd(g, 'apf_buoy_ratio');  OB(i).habTop = rd(g, 'swash_hab_top');
+    OB(i).habTop = rd(g, 'swash_hab_top');
 end
 
 %% 2 model profiles: band means over |y| <= lband of the time-mean fields, and D
@@ -108,35 +106,14 @@ for i = 1:nRec
     PR(i).Dbr = pr_(Dm);
 end
 
-%% 3 observations: Hm0 at the APF and ACM, phase-balanced APF mean current with cycle bootstrap
+%% 3 observations: Hs at the APF and ACM, phase-balanced APF mean current with cycle bootstrap
 rhoG = op.rho * op.g;
-win = 0.5 - 0.5*cos(2*pi*(0:op.nps - 1)' / op.nps);             % periodic Hann
 OBS = struct([]);
 for i = 1:nRec
     o = OB(i);
-    % --- Hm0 from pressure (APF, then ACM)
-    Hm0 = zeros(1, 2);
-    for q = 1:2
-        if q == 1, ph = o.pw * 1e4 / rhoG;  zs = habAPF; else, ph = o.pa * 1e4 / rhoG;  zs = habACM; end
-        n = numel(ph);  H = mean(ph) + zs;
-        cf = polyfit((0:n - 1)', ph, 1);  x = ph - polyval(cf, (0:n - 1)');
-        stp = op.nps / 2;  nseg = floor((n - stp) / stp);  Pxx = zeros(op.nps / 2 + 1, 1);
-        for k = 1:nseg
-            X = fft(detrend(x((k - 1)*stp + (1:op.nps))) .* win);
-            Pxx = Pxx + abs(X(1:op.nps / 2 + 1)).^2;
-        end
-        Pxx = Pxx / nseg / sum(win.^2);  Pxx(2:end - 1) = 2 * Pxx(2:end - 1);   % one-sided density, fs = 1 Hz
-        f = (0:op.nps / 2)' / op.nps;
-        w2h = (2*pi*f(2:end)).^2 * H / op.g;
-        kh = sqrt(max(w2h, 1e-12)) .* (w2h < 1) + w2h .* (w2h >= 1);
-        for it_ = 1:60, th_ = tanh(kh);  kh = kh - (kh .* th_ - w2h) ./ (th_ + kh .* (1 - th_.^2)); end
-        kw = [0; kh / H];
-        Kp = min(cosh(kw * H) ./ cosh(kw * zs), op.kpMax);
-        S = Pxx .* Kp.^2;  b = f >= op.band(1) & f < op.band(2);
-        Hm0(q) = 4 * sqrt(sum(S(b)) * (f(2) - f(1)));
-    end
-    OBS(i).HsAPF = Hm0(1) * sqrt(o.ratio);
-    OBS(i).HsACM = Hm0(2);
+    % --- Hs = 4 standard deviations of the hydrostatic pressure head (Table 1); APF as printed there
+    OBS(i).HsAPF = round(round(4 * std(o.pw * 1e4 / rhoG, 1), 3), 2);
+    OBS(i).HsACM = 4 * std(o.pa * 1e4 / rhoG, 1);
     % --- cell selection
     z = o.hab' - habAPF;                                         % cell height above the sensor
     ma = o.t >= o.ana(1) & o.t < o.ana(2);
