@@ -67,11 +67,6 @@ fig09_velocity_series
 
 Each script draws its figure. To write PNG and PDF files, set `op.exportFig = true` in section 0 of the script.
 
-## Differences from the published figures
-
-- The bootstrap intervals in Figures 8, 11, 12, and 13 depend on random resampling. They differ from the published figures by up to 0.004 m s⁻¹ in magnitude and 2.3° in direction. For the same reason, the lower limit of the D1V2 interval in Table 3 of the article (0.3 % of the wind speed) is computed here as 0.2 %.
-- In Figure 6(d), the record lines are drawn at the exact video start times. In the published figure, these times were rounded down to the minute.
-
 ## License
 
 The data and scripts are released under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
